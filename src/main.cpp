@@ -2,67 +2,66 @@
 
 // --------------------------
 
-// #define LED_BUILTIN 2
+#define LED_BUILTIN 2
 
-// void setup()
-// {
-//     pinMode(LED_BUILTIN, OUTPUT);
-// }
+#include "Freenove_WS2812_Lib_for_ESP32.h"
 
-// void loop()
-// {
-//     digitalWrite(LED_BUILTIN, HIGH); // turn the LED on (HIGH is the voltage level)
-//     delay(1000);                     // wait for a second
-//     digitalWrite(LED_BUILTIN, LOW);  // turn the LED off by making the voltage LOW
-//     delay(1000);                     // wait for a second
-// }
+#define LEDS_COUNT 1 // The number of led
+#define LEDS_PIN 48  // define the pin connected to the led strip
+#define CHANNEL 0    // RMT module channel
 
-// --------------------------
+Freenove_ESP32_WS2812 strip = Freenove_ESP32_WS2812(LEDS_COUNT, LEDS_PIN, CHANNEL, TYPE_GRB);
 
-// #include "Freenove_WS2812_Lib_for_ESP32.h"
+int colorSequence[5][3] = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}, {255, 255, 255}, {0, 0, 0}};
 
-// #define LEDS_COUNT 1 // The number of led
-// #define LEDS_PIN 48  // define the pin connected to the led strip
-// #define CHANNEL 0    // RMT module channel
+#include <HardwareSerial.h>
 
-// Freenove_ESP32_WS2812 strip = Freenove_ESP32_WS2812(LEDS_COUNT, LEDS_PIN, CHANNEL, TYPE_GRB);
+HardwareSerial debug(1);
 
-// int m_color[5][3] = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}, {255, 255, 255}, {0, 0, 0}};
-// int delayval = 100;
+void setup()
+{
+    pinMode(LED_BUILTIN, OUTPUT);
 
-// void setup()
-// {
-//     strip.begin();
-//     strip.setBrightness(10);
-// }
+    strip.begin();
+    strip.setBrightness(10);
 
-// void loop()
-// {
-//     for (int j = 0; j < 5; j++)
-//     {
-//         for (int i = 0; i < LEDS_COUNT; i++)
-//         {
-//             strip.setLedColorData(i, m_color[j][0], m_color[j][1], m_color[j][2]); // Set color data.
-//             strip.show();                                                          // Send color data to LED, and display.
-//             delay(delayval);                                                       // Interval time of each LED.
-//         }
-//         delay(500); // Interval time of each group of colors.
-//     }
-// }
+    Serial.begin(115200);
+    Serial.println("ESP32S3 initialization completed! Write something here to send it to the other serial");
 
-// --------------------------
+    debug.begin(115200, SERIAL_8N1, RX1, TX1);
+    debug.println("ESP32S3 initialization completed! Write something here to send it to the other serial");
+}
 
-// void setup()
-// {
-//     Serial.begin(115200);
-//     Serial.println("ESP32S3 initialization completed!");
-// }
+void loop()
+{
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(100);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(100);
 
-// void loop()
-// {
-//     Serial.printf("Running time : %.1f s\r\n", millis() / 1000.0f);
-//     delay(1000);
-// }
+    // Serial.printf("Running time : %.1f s\r\n", millis() / 1000.0f);
+    // C:\Users\leaumar\.platformio\penv\Scripts\platformio.exe device monitor -p com7 -b 115200 --echo
+    while (debug.available())
+    {
+        Serial.write(debug.read());
+    }
+    while (Serial.available())
+    {
+        debug.write(Serial.read());
+    }
+    delay(100);
+
+    for (int j = 0; j < 5; j++)
+    {
+        for (int i = 0; i < LEDS_COUNT; i++)
+        {
+            strip.setLedColorData(i, colorSequence[j][0], colorSequence[j][1], colorSequence[j][2]);
+            strip.show();
+            delay(100);
+        }
+        delay(100);
+    }
+}
 
 // --------------------------
 
@@ -282,22 +281,22 @@
 
 // --------------------------
 
-#include <HardwareSerial.h>
+// #include <HardwareSerial.h>
 
-HardwareSerial fluvius(1);
+// HardwareSerial fluvius(1);
 
-void setup()
-{
-    Serial.begin(115200);
-    fluvius.begin(115200, SERIAL_8N1, RX1, TX1, true);
+// void setup()
+// {
+//     Serial.begin(115200);
+//     fluvius.begin(115200, SERIAL_8N1, RX1, TX1, true);
 
-    Serial.println("ESP32S3 initialization completed!");
-}
+//     Serial.println("ESP32S3 initialization completed!");
+// }
 
-void loop()
-{
-    if (fluvius.available())
-    {
-        Serial.write(fluvius.read());
-    }
-}
+// void loop()
+// {
+//     if (fluvius.available())
+//     {
+//         Serial.write(fluvius.read());
+//     }
+// }
