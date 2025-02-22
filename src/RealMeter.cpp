@@ -1,6 +1,10 @@
 #include <Arduino.h>
 #include "RealMeter.h"
 #include <HardwareSerial.h>
+#include "BLEDevice.h"
+#include "BLEServer.h"
+#include "BLEUtils.h"
+#include "BLE2902.h"
 
 // the usb cable must not be used because the meter provides power
 // connect meter Vcc to 5V, gnd to gnd, pullup to 3.3V, meter inverted tx with pullup to pin 15
@@ -10,31 +14,102 @@
 
 #define LED_BUILTIN 2
 
+HardwareSerial &debug = Serial;
 HardwareSerial meter(1);
+
+BLECharacteristic *pCharacteristic;
+long lastMsg = 0;
+#define SERVICE_UUID "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
+#define CHARACTERISTIC_UUID_TX "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
+
+class MyServerCallbacks : public BLEServerCallbacks
+{
+private:
+    bool deviceConnected = false;
+
+public:
+    void onConnect(BLEServer *pServer)
+    {
+        debug.println("BLE listener connected");
+        deviceConnected = true;
+    };
+    void onDisconnect(BLEServer *pServer)
+    {
+        debug.println("BLE listener disconnected");
+        deviceConnected = false;
+    }
+    bool isConnected() const
+    {
+        return deviceConnected;
+    }
+};
+
+MyServerCallbacks *serverCallbacks = new MyServerCallbacks();
+
+void setupBLE(String BLEName)
+{
+    BLEDevice::init(BLEName.c_str());
+
+    BLEServer *pServer = BLEDevice::createServer();
+    pServer->setCallbacks(serverCallbacks);
+
+    BLEService *pService = pServer->createService(SERVICE_UUID);
+    pCharacteristic = pService->createCharacteristic(CHARACTERISTIC_UUID_TX, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+
+    // TODO is this how you do it? multiple descriptors on 1 characteristic, with READ | NOTIFY where READ is just for the friendly name?
+    BLEDescriptor *friendlyName = new BLEDescriptor((uint16_t)0x2901);
+    friendlyName->setValue("Meter reading");
+    pCharacteristic->addDescriptor(friendlyName);
+    pCharacteristic->addDescriptor(new BLE2902());
+
+    pService->start();
+    pServer->getAdvertising()->start();
+}
 
 void RealMeter::init()
 {
-    pinMode(LED_BUILTIN, OUTPUT);
+    debug.begin(115200);
+    debug.println("ESP32S3 debug output initialized (will not respond to input)");
 
-    Serial.begin(115200);
-    Serial.println("ESP32S3 debug output initialized (will not respond to input)");
+    pinMode(LED_BUILTIN, OUTPUT);
+    debug.println("ESP32S3 message led initialized");
+
+    setupBLE("ESP32S3_Bluetooth");
+    debug.println("ESP32S3 BLE broadcast initialized");
 
     meter.begin(115200, SERIAL_8N1, RX1, TX1, true);
-    Serial.println("ESP32S3 meter input initialized (cannot output to meter)");
+    debug.println("ESP32S3 meter input initialized (cannot output to meter)");
 }
 
 void RealMeter::loop()
 {
     if (meter.available())
     {
+        debug.println("Incoming reading...\n");
         digitalWrite(LED_BUILTIN, HIGH);
 
+        String meterReading = "";
         while (meter.available())
         {
-            Serial.write(meter.read());
+            char c = meter.read();
+            meterReading += c;
+            debug.write(c);
         }
 
         digitalWrite(LED_BUILTIN, LOW);
+        debug.println("\nReading received, length=" + String(meterReading.length()) + " chars");
+
+        long now = millis();
+        if (now - lastMsg > 100)
+        {
+            if (serverCallbacks->isConnected())
+            {
+                const char *newValue = meterReading.c_str();
+                pCharacteristic->setValue(newValue);
+                pCharacteristic->notify();
+            }
+            lastMsg = now;
+        }
     }
 }
 
