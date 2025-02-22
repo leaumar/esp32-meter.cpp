@@ -5,6 +5,7 @@
 #include "BLEServer.h"
 #include "BLEUtils.h"
 #include "BLE2902.h"
+#include "Freenove_WS2812_Lib_for_ESP32.h"
 
 // the usb cable must not be used because the meter provides power
 // connect meter Vcc to 5V, gnd to gnd, pullup to 3.3V, meter inverted tx with pullup to pin 15
@@ -13,9 +14,13 @@
 // monitor isolator with C:\Users\leaumar\.platformio\penv\Scripts\platformio.exe device monitor -p com7 -b 115200
 
 #define LED_BUILTIN 2
+#define LEDS_PIN 48
 
 HardwareSerial &debug = Serial;
 HardwareSerial meter(1);
+
+// there's 1 rgb led in the strip and it only has channel 0
+Freenove_ESP32_WS2812 rgb = Freenove_ESP32_WS2812(1, LEDS_PIN, 0, TYPE_GRB);
 
 BLECharacteristic *pCharacteristic;
 long lastMsg = 0;
@@ -72,7 +77,9 @@ void RealMeter::init()
     debug.println("ESP32S3 debug output initialized (will not respond to input)");
 
     pinMode(LED_BUILTIN, OUTPUT);
-    debug.println("ESP32S3 message led initialized");
+    rgb.begin();
+    rgb.setBrightness(10);
+    debug.println("ESP32S3 message leds initialized");
 
     setupBLE("ESP32S3_Bluetooth");
     debug.println("ESP32S3 BLE broadcast initialized");
@@ -86,7 +93,9 @@ void RealMeter::loop()
     if (meter.available())
     {
         debug.println("Incoming reading...\n");
-        digitalWrite(LED_BUILTIN, HIGH);
+        // digitalWrite(LED_BUILTIN, HIGH);
+        rgb.setLedColorData(0, 0, 255, 0);
+        rgb.show();
 
         String meterReading = "";
         while (meter.available())
@@ -96,18 +105,21 @@ void RealMeter::loop()
             debug.write(c);
         }
 
-        digitalWrite(LED_BUILTIN, LOW);
+        // digitalWrite(LED_BUILTIN, LOW);
+        rgb.setLedColorData(255, 0, 0, 0);
+        rgb.show();
         debug.println("\nReading received, length=" + String(meterReading.length()) + " chars");
 
         long now = millis();
-        if (now - lastMsg > 100)
+        if (now - lastMsg > 100 && serverCallbacks->isConnected())
         {
-            if (serverCallbacks->isConnected())
-            {
-                const char *newValue = meterReading.c_str();
-                pCharacteristic->setValue(newValue);
-                pCharacteristic->notify();
-            }
+            rgb.setLedColorData(0, 0, 255, 0);
+            rgb.show();
+
+            const char *newValue = meterReading.c_str();
+            pCharacteristic->setValue(newValue);
+            pCharacteristic->notify();
+
             lastMsg = now;
         }
     }
