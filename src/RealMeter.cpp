@@ -7,6 +7,7 @@
 #include "BLE2902.h"
 #include "Freenove_WS2812_Lib_for_ESP32.h"
 #include <string>
+#include <regex>
 
 // the usb cable must not be used because the meter provides power
 // connect meter Vcc to 5V, gnd to gnd, pullup to 3.3V, meter inverted tx with pullup to pin 15
@@ -89,6 +90,15 @@ void RealMeter::init()
     debug.println("ESP32S3 meter input initialized (cannot output to meter)");
 }
 
+const std::regex dayPowerR(R"(1-0:1.8.1\((\d+\.\d+\*kWh)\))");
+const std::regex nightPowerR(R"(1-0:1.8.2\((\d+\.\d+\*kWh)\))");
+
+std::string getPower(std::string &data, std::regex pattern)
+{
+    std::smatch match;
+    return std::regex_search(data, match, pattern) ? match[1].str() : "no match";
+}
+
 void RealMeter::loop()
 {
     if (meter.available())
@@ -113,13 +123,21 @@ void RealMeter::loop()
         debug.print(meterReading.length());
         debug.println(" chars");
 
+        std::string day = getPower(meterReading, dayPowerR);
+        std::string night = getPower(meterReading, nightPowerR);
+
+        debug.print("day = ");
+        debug.print(day.c_str());
+        debug.print(", night = ");
+        debug.println(night.c_str());
+
         long now = millis();
         if (now - lastMsg > 100 && serverCallbacks->isConnected())
         {
             rgb.setLedColorData(0, 0, 255, 0);
             rgb.show();
 
-            pCharacteristic->setValue(meterReading);
+            pCharacteristic->setValue("day = " + day + ", night = " + night);
             pCharacteristic->notify();
 
             lastMsg = now;
