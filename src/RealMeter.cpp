@@ -20,16 +20,15 @@
 
 HardwareSerial &debug = Serial;
 HardwareSerial meter(1);
+#define METER_UART_TIMEOUT 1500
 
 // there's 1 rgb led in the strip and it only has channel 0
 Freenove_ESP32_WS2812 rgb = Freenove_ESP32_WS2812(1, LEDS_PIN, 0, TYPE_GRB);
 
 BLECharacteristic *pValues;
-BLECharacteristic *pEcho;
-long lastMsg = 0;
+unsigned long lastMsg = 0;
 #define SERVICE_UUID "727EBBC9-A355-44BA-A81A-46B13689FF59"
 #define VALUES_UUID_TX "97E7B235-51D3-46D0-B426-899C28BFB13B"
-#define ECHO_UUID_TX "879570A7-CF05-4EC0-B345-F0D8618BFBAF"
 
 class MyServerCallbacks : public BLEServerCallbacks
 {
@@ -51,30 +50,31 @@ public:
     {
         return deviceConnected;
     }
+    void onMtuChanged(BLEServer *pServer, esp_ble_gatts_cb_param_t *param)
+    {
+        debug.printf("BLE MTU negotiated to %d bytes\n", param->mtu.mtu);
+    }
 };
 
 MyServerCallbacks *serverCallbacks = new MyServerCallbacks();
 
-void setupBLE(String BLEName)
+void setupBLE(const String &BLEName)
 {
     BLEDevice::init(BLEName.c_str());
+    // TODO custom MTU doesn't work
+    // subscription-pushed values are truncated to MTU
+    // BLEDevice::setMTU(64);
 
     BLEServer *pServer = BLEDevice::createServer();
     pServer->setCallbacks(serverCallbacks);
 
     BLEService *pService = pServer->createService(SERVICE_UUID);
     pValues = pService->createCharacteristic(VALUES_UUID_TX, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
-    pEcho = pService->createCharacteristic(ECHO_UUID_TX, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
 
     BLEDescriptor *friendlyNameValues = new BLEDescriptor((uint16_t)0x2901);
     friendlyNameValues->setValue("Meter readings");
     pValues->addDescriptor(friendlyNameValues);
     pValues->addDescriptor(new BLE2902());
-
-    BLEDescriptor *friendlyNameEcho = new BLEDescriptor((uint16_t)0x2901);
-    friendlyNameEcho->setValue("Meter echo");
-    pEcho->addDescriptor(friendlyNameEcho);
-    pEcho->addDescriptor(new BLE2902());
 
     pService->start();
     pServer->getAdvertising()->start();
@@ -96,72 +96,97 @@ void RealMeter::init()
     debug.println("BLE broadcast initialized.");
 
     meter.begin(115200, SERIAL_8N1, RX1, TX1, true);
-    // a message should arrive every second
-    meter.setTimeout(1500);
+    meter.setTimeout(METER_UART_TIMEOUT);
     debug.println("Meter input initialized (cannot output to meter).");
 }
 
 // 1-0:1.8.1(003020.519*kWh)
-const std::regex dayPowerR(R"(1-0:1.8.1\((\d+\.\d+\*kWh)\))");
+const std::regex dayPowerR(R"(1-0:1.8.1\(0*(\d+\.\d+\*kWh)\))");
 // 1-0:1.8.2(003080.021*kWh)
-const std::regex nightPowerR(R"(1-0:1.8.2\((\d+\.\d+\*kWh)\))");
+const std::regex nightPowerR(R"(1-0:1.8.2\(0*(\d+\.\d+\*kWh)\))");
 
-String regex_match(String data, std::regex pattern)
+String regex_match(String &data, const std::regex &pattern)
 {
     std::string stdData = data.c_str();
     std::smatch match;
     return std::regex_search(stdData, match, pattern) ? String(match[1].str().c_str()) : "<no match>";
 }
 
+// because serial.readStringUntil doesn't include the terminator, you can't tell if the string is complete or timed out
+String readStringUntilWithTimeoutIncludingTerminator(HardwareSerial &serial, char terminator, unsigned long timeout)
+{
+    unsigned long startMillis = millis();
+    String received = "";
+
+    while (millis() - startMillis < timeout)
+    {
+        // while-ing might keep it reading forever
+        int available = serial.available();
+        for (int i = 0; i < available; i++)
+        {
+            char c = serial.read();
+            received += c;
+
+            if (c == terminator)
+            {
+                return received;
+            }
+        }
+    }
+
+    return received;
+}
+
 void RealMeter::loop()
 {
-    debug.println("Waiting for reading.");
+    debug.println("Waiting for telegram.");
     rgb.setLedColorData(0, 0, 255, 0);
     rgb.show();
 
     // ! prefixes the hash at the end of a message
-    String meterReading = meter.readStringUntil('!');
+    // a message should arrive every second
+    String telegram = readStringUntilWithTimeoutIncludingTerminator(meter, '!', METER_UART_TIMEOUT);
 
-    debug.println("Received message:");
-    debug.println(meterReading);
-
-    pEcho->setValue(meterReading.c_str());
-    pEcho->notify();
-
-    if (meterReading.charAt(meterReading.length() - 1) != '!')
+    if (telegram.length() == 0)
     {
-        debug.println("Didn't read properly, trying again.");
+        debug.println("Nothing received.");
         return;
     }
 
-    // the hash is 4 more chars
-    while (meter.available() < 4)
+    if (telegram.charAt(telegram.length() - 1) != '!')
     {
-        sleep(10);
-    }
-    for (int i = 0; i < 4; i++)
-    {
-        meterReading += meter.read();
+        debug.println("Didn't read properly, trying again:");
+        debug.println(telegram);
+        return;
     }
 
-    debug.println("Reading received, length = " + String(meterReading.length()) + " chars.");
+    // the hash is 4 more hex chars and a crlf
+    String hash = readStringUntilWithTimeoutIncludingTerminator(meter, '\n', METER_UART_TIMEOUT);
+    telegram += hash;
+
+    debug.print("Received telegram, ");
+    debug.print(String(telegram.length()));
+    debug.println(" chars:");
+    debug.println(telegram);
+
     rgb.setLedColorData(0, 255, 0, 0);
     rgb.show();
 
-    String day = regex_match(meterReading, dayPowerR);
-    String night = regex_match(meterReading, nightPowerR);
+    String dayPower = regex_match(telegram, dayPowerR);
+    String nightPower = regex_match(telegram, nightPowerR);
 
-    String valuesMessage = "day = " + day + ", night = " + night;
+    String valuesMessage = "day = " + dayPower + ", night = " + nightPower;
 
-    debug.println("Parsed: \"" + valuesMessage + "\".");
+    debug.print("Parsed: \"");
+    debug.print(valuesMessage);
+    debug.println("\".");
 
-    sleep(100); // give time to see the previous light color
-    rgb.setLedColorData(0, 0, 0, 255);
-    rgb.show();
+    delay(100); // give time to see the previous light color
 
-    long now = millis();
+    unsigned long now = millis();
     if (now - lastMsg > 100 && serverCallbacks->isConnected())
     {
+        debug.println("Broadcasting values.");
         rgb.setLedColorData(0, 0, 0, 255);
         rgb.show();
 
@@ -169,7 +194,8 @@ void RealMeter::loop()
         pValues->notify();
 
         lastMsg = now;
+        delay(100); // give time to see the previous light color
     }
 
-    sleep(100); // give time to see the previous light color
+    debug.println("End of loop.");
 }
