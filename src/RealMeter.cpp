@@ -6,6 +6,7 @@
 #include "BLEUtils.h"
 #include "BLE2902.h"
 #include "Freenove_WS2812_Lib_for_ESP32.h"
+#include <string>
 
 // the usb cable must not be used because the meter provides power
 // connect meter Vcc to 5V, gnd to gnd, pullup to 3.3V, meter inverted tx with pullup to pin 15
@@ -97,7 +98,7 @@ void RealMeter::loop()
         rgb.setLedColorData(0, 0, 255, 0);
         rgb.show();
 
-        String meterReading = "";
+        std::string meterReading = "";
         while (meter.available())
         {
             char c = meter.read();
@@ -108,7 +109,9 @@ void RealMeter::loop()
         // digitalWrite(LED_BUILTIN, LOW);
         rgb.setLedColorData(255, 0, 0, 0);
         rgb.show();
-        debug.println("\nReading received, length=" + String(meterReading.length()) + " chars");
+        debug.print("\nReading received, length = ");
+        debug.print(meterReading.length());
+        debug.println(" chars");
 
         long now = millis();
         if (now - lastMsg > 100 && serverCallbacks->isConnected())
@@ -116,8 +119,7 @@ void RealMeter::loop()
             rgb.setLedColorData(0, 0, 255, 0);
             rgb.show();
 
-            const char *newValue = meterReading.c_str();
-            pCharacteristic->setValue(newValue);
+            pCharacteristic->setValue(meterReading);
             pCharacteristic->notify();
 
             lastMsg = now;
