@@ -24,10 +24,12 @@ HardwareSerial meter(1);
 // there's 1 rgb led in the strip and it only has channel 0
 Freenove_ESP32_WS2812 rgb = Freenove_ESP32_WS2812(1, LEDS_PIN, 0, TYPE_GRB);
 
-BLECharacteristic *pCharacteristic;
+BLECharacteristic *pValues;
+BLECharacteristic *pEcho;
 long lastMsg = 0;
-#define SERVICE_UUID "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
-#define CHARACTERISTIC_UUID_TX "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
+#define SERVICE_UUID "727EBBC9-A355-44BA-A81A-46B13689FF59"
+#define VALUES_UUID_TX "97E7B235-51D3-46D0-B426-899C28BFB13B"
+#define ECHO_UUID_TX "879570A7-CF05-4EC0-B345-F0D8618BFBAF"
 
 class MyServerCallbacks : public BLEServerCallbacks
 {
@@ -61,13 +63,18 @@ void setupBLE(String BLEName)
     pServer->setCallbacks(serverCallbacks);
 
     BLEService *pService = pServer->createService(SERVICE_UUID);
-    pCharacteristic = pService->createCharacteristic(CHARACTERISTIC_UUID_TX, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+    pValues = pService->createCharacteristic(VALUES_UUID_TX, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+    pEcho = pService->createCharacteristic(ECHO_UUID_TX, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
 
-    // TODO is this how you do it? multiple descriptors on 1 characteristic, with READ | NOTIFY where READ is just for the friendly name?
-    BLEDescriptor *friendlyName = new BLEDescriptor((uint16_t)0x2901);
-    friendlyName->setValue("Meter reading");
-    pCharacteristic->addDescriptor(friendlyName);
-    pCharacteristic->addDescriptor(new BLE2902());
+    BLEDescriptor *friendlyNameValues = new BLEDescriptor((uint16_t)0x2901);
+    friendlyNameValues->setValue("Meter readings");
+    pValues->addDescriptor(friendlyNameValues);
+    pValues->addDescriptor(new BLE2902());
+
+    BLEDescriptor *friendlyNameEcho = new BLEDescriptor((uint16_t)0x2901);
+    friendlyNameEcho->setValue("Meter echo");
+    pEcho->addDescriptor(friendlyNameEcho);
+    pEcho->addDescriptor(new BLE2902());
 
     pService->start();
     pServer->getAdvertising()->start();
@@ -115,9 +122,15 @@ void RealMeter::loop()
     // ! prefixes the hash at the end of a message
     String meterReading = meter.readStringUntil('!');
 
+    debug.println("Received message:");
+    debug.println(meterReading);
+
+    pEcho->setValue(meterReading.c_str());
+    pEcho->notify();
+
     if (meterReading.charAt(meterReading.length() - 1) != '!')
     {
-        debug.println("Completely failed to read, trying again.");
+        debug.println("Didn't read properly, trying again.");
         return;
     }
 
@@ -152,8 +165,8 @@ void RealMeter::loop()
         rgb.setLedColorData(0, 0, 0, 255);
         rgb.show();
 
-        pCharacteristic->setValue(valuesMessage.c_str());
-        pCharacteristic->notify();
+        pValues->setValue(valuesMessage.c_str());
+        pValues->notify();
 
         lastMsg = now;
     }
