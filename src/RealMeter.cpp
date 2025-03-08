@@ -37,12 +37,12 @@ private:
 public:
     void onConnect(BLEServer *pServer)
     {
-        debug.println("BLE listener connected");
+        debug.println("BLE listener connected.");
         deviceConnected = true;
     };
     void onDisconnect(BLEServer *pServer)
     {
-        debug.println("BLE listener disconnected");
+        debug.println("BLE listener disconnected.");
         deviceConnected = false;
     }
     bool isConnected() const
@@ -76,71 +76,87 @@ void setupBLE(String BLEName)
 void RealMeter::init()
 {
     debug.begin(115200);
-    debug.println("ESP32S3 debug output initialized (will not respond to input)");
+    debug.println("Debug output initialized (will not respond to input).");
 
     pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, LOW);
     rgb.begin();
     rgb.setBrightness(10);
-    debug.println("ESP32S3 message leds initialized");
+    rgb.setLedColorData(0, 0, 0, 0);
+    debug.println("Status leds initialized.");
 
     setupBLE("ESP32S3_Bluetooth");
-    debug.println("ESP32S3 BLE broadcast initialized");
+    debug.println("BLE broadcast initialized.");
 
     meter.begin(115200, SERIAL_8N1, RX1, TX1, true);
-    debug.println("ESP32S3 meter input initialized (cannot output to meter)");
+    // a message should arrive every second
+    meter.setTimeout(1500);
+    debug.println("Meter input initialized (cannot output to meter).");
 }
 
+// 1-0:1.8.1(003020.519*kWh)
 const std::regex dayPowerR(R"(1-0:1.8.1\((\d+\.\d+\*kWh)\))");
+// 1-0:1.8.2(003080.021*kWh)
 const std::regex nightPowerR(R"(1-0:1.8.2\((\d+\.\d+\*kWh)\))");
 
-std::string getPower(std::string &data, std::regex pattern)
+String regex_match(String data, std::regex pattern)
 {
+    std::string stdData = data.c_str();
     std::smatch match;
-    return std::regex_search(data, match, pattern) ? match[1].str() : "no match";
+    return std::regex_search(stdData, match, pattern) ? String(match[1].str().c_str()) : "<no match>";
 }
 
 void RealMeter::loop()
 {
-    if (meter.available())
+    debug.println("Waiting for reading.");
+    rgb.setLedColorData(0, 0, 255, 0);
+    rgb.show();
+
+    // ! prefixes the hash at the end of a message
+    String meterReading = meter.readStringUntil('!');
+
+    if (meterReading.charAt(meterReading.length() - 1) != '!')
     {
-        debug.println("Incoming reading...\n");
-        // digitalWrite(LED_BUILTIN, HIGH);
-        rgb.setLedColorData(0, 0, 255, 0);
-        rgb.show();
-
-        std::string meterReading = "";
-        while (meter.available())
-        {
-            char c = meter.read();
-            meterReading += c;
-            debug.write(c);
-        }
-
-        // digitalWrite(LED_BUILTIN, LOW);
-        rgb.setLedColorData(255, 0, 0, 0);
-        rgb.show();
-        debug.print("\nReading received, length = ");
-        debug.print(meterReading.length());
-        debug.println(" chars");
-
-        std::string day = getPower(meterReading, dayPowerR);
-        std::string night = getPower(meterReading, nightPowerR);
-
-        debug.print("day = ");
-        debug.print(day.c_str());
-        debug.print(", night = ");
-        debug.println(night.c_str());
-
-        long now = millis();
-        if (now - lastMsg > 100 && serverCallbacks->isConnected())
-        {
-            rgb.setLedColorData(0, 0, 255, 0);
-            rgb.show();
-
-            pCharacteristic->setValue("day = " + day + ", night = " + night);
-            pCharacteristic->notify();
-
-            lastMsg = now;
-        }
+        debug.println("Completely failed to read, trying again.");
+        return;
     }
+
+    // the hash is 4 more chars
+    while (meter.available() < 4)
+    {
+        sleep(10);
+    }
+    for (int i = 0; i < 4; i++)
+    {
+        meterReading += meter.read();
+    }
+
+    debug.println("Reading received, length = " + String(meterReading.length()) + " chars.");
+    rgb.setLedColorData(0, 255, 0, 0);
+    rgb.show();
+
+    String day = regex_match(meterReading, dayPowerR);
+    String night = regex_match(meterReading, nightPowerR);
+
+    String valuesMessage = "day = " + day + ", night = " + night;
+
+    debug.println("Parsed: \"" + valuesMessage + "\".");
+
+    sleep(100); // give time to see the previous light color
+    rgb.setLedColorData(0, 0, 0, 255);
+    rgb.show();
+
+    long now = millis();
+    if (now - lastMsg > 100 && serverCallbacks->isConnected())
+    {
+        rgb.setLedColorData(0, 0, 0, 255);
+        rgb.show();
+
+        pCharacteristic->setValue(valuesMessage.c_str());
+        pCharacteristic->notify();
+
+        lastMsg = now;
+    }
+
+    sleep(100); // give time to see the previous light color
 }
