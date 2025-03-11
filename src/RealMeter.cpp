@@ -46,6 +46,9 @@ public:
         debug.println("BLE listener disconnected.");
         // prevent going negative just in case
         clients -= clients > 0 ? 1 : 0;
+        delay(500); // "small delay prevents crashes" according to chatgpt
+        pServer->getAdvertising()->start();
+        debug.println("Restarted advertising.");
     }
     bool hasClients()
     {
