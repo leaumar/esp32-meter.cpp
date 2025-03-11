@@ -6,6 +6,7 @@
 #include "BLEUtils.h"
 #include "BLE2902.h"
 #include "Freenove_WS2812_Lib_for_ESP32.h"
+#include "esp_gatt_common_api.h"
 #include <string>
 #include <regex>
 
@@ -38,29 +39,37 @@ private:
 public:
     void onConnect(BLEServer *pServer)
     {
-        debug.println("BLE listener connected.");
         clients += 1;
-    };
+        uint16_t connId = pServer->getConnId();
+        debug.printf("BLE listener connected, MTU = %d.\n", pServer->getPeerMTU(connId));
+        // server cannot negotiate mtu
+    }
+
     void onDisconnect(BLEServer *pServer)
     {
         debug.println("BLE listener disconnected.");
         // prevent going negative just in case
         clients -= clients > 0 ? 1 : 0;
-        delay(500); // "small delay prevents crashes" according to chatgpt
+
+        // "small delay prevents crashes" according to chatgpt
+        delay(500);
         pServer->getAdvertising()->start();
         debug.println("Restarted advertising.");
     }
+
     bool hasClients()
     {
         return clients > 0;
     }
+
     unsigned int countClients()
     {
         return clients;
     }
+
     void onMtuChanged(BLEServer *pServer, esp_ble_gatts_cb_param_t *param)
     {
-        debug.printf("BLE MTU negotiated to %d bytes\n", param->mtu.mtu);
+        debug.printf("BLE MTU negotiated (by client) to %d bytes.\n", param->mtu.mtu);
     }
 };
 
@@ -69,19 +78,25 @@ MyServerCallbacks *serverCallbacks = new MyServerCallbacks();
 void setupBLE(const String &BLEName)
 {
     BLEDevice::init(BLEName.c_str());
-    // TODO custom MTU doesn't work
     // subscription-pushed values are truncated to MTU
-    // BLEDevice::setMTU(64);
+    esp_err_t mtuError = BLEDevice::setMTU(ESP_GATT_MAX_MTU_SIZE);
+    if (mtuError != ESP_OK)
+    {
+        debug.print("MTU failure: ");
+        debug.println(mtuError);
+    }
 
     BLEServer *pServer = BLEDevice::createServer();
     pServer->setCallbacks(serverCallbacks);
 
     BLEService *pService = pServer->createService(SERVICE_UUID);
+    // TODO pushed values are still truncated even when mtu=517
     pValues = pService->createCharacteristic(VALUES_UUID_TX, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
 
-    BLEDescriptor *friendlyNameValues = new BLEDescriptor((uint16_t)0x2901);
-    friendlyNameValues->setValue("Meter readings");
-    pValues->addDescriptor(friendlyNameValues);
+    BLEDescriptor *friendlyName = new BLEDescriptor((uint16_t)0x2901);
+    friendlyName->setValue("Meter readings");
+    pValues->addDescriptor(friendlyName);
+    // enable notifications
     pValues->addDescriptor(new BLE2902());
 
     pService->start();
@@ -147,6 +162,9 @@ String readStringUntilWithTimeoutIncludingTerminator(HardwareSerial &serial, cha
 
 void RealMeter::loop()
 {
+    pValues->setValue("abcdefghijklmnopqrstuvwxyz0123456789 lorem ipsum dolor sit amet");
+    pValues->notify();
+
     debug.println("Waiting for telegram.");
     rgb.setLedColorData(0, 0, 255, 0);
     rgb.show();
