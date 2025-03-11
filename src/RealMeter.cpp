@@ -33,22 +33,27 @@ unsigned long lastMsg = 0;
 class MyServerCallbacks : public BLEServerCallbacks
 {
 private:
-    bool deviceConnected = false;
+    unsigned int clients = 0;
 
 public:
     void onConnect(BLEServer *pServer)
     {
         debug.println("BLE listener connected.");
-        deviceConnected = true;
+        clients += 1;
     };
     void onDisconnect(BLEServer *pServer)
     {
         debug.println("BLE listener disconnected.");
-        deviceConnected = false;
+        // prevent going negative just in case
+        clients -= clients > 0 ? 1 : 0;
     }
-    bool isConnected() const
+    bool hasClients()
     {
-        return deviceConnected;
+        return clients > 0;
+    }
+    unsigned int countClients()
+    {
+        return clients;
     }
     void onMtuChanged(BLEServer *pServer, esp_ble_gatts_cb_param_t *param)
     {
@@ -183,8 +188,12 @@ void RealMeter::loop()
 
     delay(100); // give time to see the previous light color
 
+    debug.print("Currently ");
+    debug.print(serverCallbacks->countClients());
+    debug.println(" BLE clients connected.");
+
     unsigned long now = millis();
-    if (now - lastMsg > 100 && serverCallbacks->isConnected())
+    if (now - lastMsg > 100 && serverCallbacks->hasClients())
     {
         debug.println("Broadcasting values.");
         rgb.setLedColorData(0, 0, 0, 255);
