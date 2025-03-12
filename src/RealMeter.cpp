@@ -115,7 +115,7 @@ void RealMeter::init()
     rgb.setLedColorData(0, 0, 0, 0);
     debug.println("Status leds initialized.");
 
-    setupBLE("ESP32S3_Bluetooth");
+    setupBLE("ESP32-S3 MLE");
     debug.println("BLE broadcast initialized.");
 
     meter.begin(115200, SERIAL_8N1, RX1, TX1, true);
