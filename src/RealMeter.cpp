@@ -5,6 +5,7 @@
 #include "BLEServer.h"
 #include "BLEUtils.h"
 #include "BLE2902.h"
+#include "BLE2904.h"
 #include "Freenove_WS2812_Lib_for_ESP32.h"
 #include "esp_gatt_common_api.h"
 #include <string>
@@ -93,11 +94,21 @@ void setupBLE(const String &BLEName)
     // TODO pushed values are still truncated even when mtu=517
     pValues = pService->createCharacteristic(VALUES_UUID_TX, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
 
+    // Characteristic User Description
     BLEDescriptor *friendlyName = new BLEDescriptor((uint16_t)0x2901);
     friendlyName->setValue("Meter readings");
     pValues->addDescriptor(friendlyName);
+
+    // Client Characteristic Configuration
     // enable notifications
     pValues->addDescriptor(new BLE2902());
+
+    // Characteristic Presentation Format
+    // advertise it as utf8 string
+    // https://www.bluetooth.com/specifications/assigned-numbers/
+    BLE2904 *format = new BLE2904();
+    format->setFormat(BLE2904::FORMAT_UTF8);
+    pValues->addDescriptor(format);
 
     pService->start();
     pServer->getAdvertising()->start();
