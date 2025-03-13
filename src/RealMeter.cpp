@@ -83,8 +83,7 @@ void setupBLE(const String &BLEName)
     esp_err_t mtuError = BLEDevice::setMTU(ESP_GATT_MAX_MTU_SIZE);
     if (mtuError != ESP_OK)
     {
-        debug.print("MTU failure: ");
-        debug.println(mtuError);
+        debug.printf("MTU failure: %s\n", mtuError);
     }
 
     BLEServer *pServer = BLEDevice::createServer();
@@ -192,8 +191,7 @@ void RealMeter::loop()
 
     if (telegram.charAt(telegram.length() - 1) != '!')
     {
-        debug.println("Didn't read properly, trying again:");
-        debug.println(telegram);
+        debug.printf("Didn't read properly, trying again:\n%s\n");
         return;
     }
 
@@ -201,28 +199,20 @@ void RealMeter::loop()
     String hash = readStringUntilWithTimeoutIncludingTerminator(meter, '\n', METER_UART_TIMEOUT);
     telegram += hash;
 
-    debug.print("Received telegram, ");
-    debug.print(String(telegram.length()));
-    debug.println(" chars:");
-    debug.println(telegram);
+    debug.printf("Received telegram, %d chars: %s\n", telegram.length(), telegram);
 
     rgb.setLedColorData(0, 255, 0, 0);
     rgb.show();
 
     String dayPower = regex_match(telegram, dayPowerR);
     String nightPower = regex_match(telegram, nightPowerR);
+    String valuesMessage = "{\"day\": " + dayPower + ", \"night\": " + nightPower + "}";
 
-    String valuesMessage = "day = " + dayPower + ", night = " + nightPower;
-
-    debug.print("Parsed: \"");
-    debug.print(valuesMessage);
-    debug.println("\".");
+    debug.printf("Parsed: \"%s\".\n", valuesMessage);
 
     delay(100); // give time to see the previous light color
 
-    debug.print("Currently ");
-    debug.print(serverCallbacks->countClients());
-    debug.println(" BLE clients connected.");
+    debug.printf("Currently %d BLE clients connected.\n", serverCallbacks->countClients());
 
     unsigned long now = millis();
     if (now - lastMsg > 100 && serverCallbacks->hasClients())
