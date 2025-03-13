@@ -58,11 +58,6 @@ public:
         debug.println("Restarted advertising.");
     }
 
-    bool hasClients()
-    {
-        return clients > 0;
-    }
-
     unsigned int countClients()
     {
         return clients;
@@ -219,19 +214,19 @@ void RealMeter::loop()
 
     debug.printf("Currently %d BLE clients connected.\n", serverCallbacks->countClients());
 
-    unsigned long now = millis();
-    if (now - lastMsg > 100 && serverCallbacks->hasClients())
+    if (millis() - lastMsg < 100)
     {
-        debug.println("Broadcasting values.");
-        rgb.setLedColorData(0, 0, 0, 255);
-        rgb.show();
-
-        pValues->setValue(json.c_str());
-        pValues->notify();
-
-        lastMsg = now;
-        delay(100); // give time to see the previous light color
+        debug.println("Skipping broadcast because of short interval.");
+        return;
     }
 
-    debug.println("End of loop.");
+    debug.println("Broadcasting values.");
+    rgb.setLedColorData(0, 0, 0, 255);
+    rgb.show();
+
+    pValues->setValue(json.c_str());
+    pValues->notify();
+
+    lastMsg = millis();
+    delay(100); // give time to see the previous light color
 }
