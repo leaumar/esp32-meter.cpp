@@ -113,6 +113,11 @@ void setupBLE(const String &BLEName)
     pServer->getAdvertising()->start();
 }
 
+String formatJson(String day, String night)
+{
+    return "{\"day\": \"" + day + "\", \"night\": \"" + night + "\"}";
+}
+
 void RealMeter::init()
 {
     debug.begin(115200);
@@ -132,7 +137,7 @@ void RealMeter::init()
     meter.setTimeout(METER_UART_TIMEOUT);
     debug.println("Meter input initialized (cannot output to meter).");
 
-    pValues->setValue("lorem ipsum dolor sit amet");
+    pValues->setValue(formatJson("000000.NaN*kWh", "000000.NaN*kWh").c_str());
     pValues->notify();
 }
 
@@ -206,9 +211,9 @@ void RealMeter::loop()
 
     String dayPower = regex_match(telegram, dayPowerR);
     String nightPower = regex_match(telegram, nightPowerR);
-    String valuesMessage = "{\"day\": " + dayPower + ", \"night\": " + nightPower + "}";
+    String json = formatJson(dayPower, nightPower);
 
-    debug.printf("Parsed: \"%s\".\n", valuesMessage);
+    debug.printf("Parsed: \"%s\".\n", json);
 
     delay(100); // give time to see the previous light color
 
@@ -221,7 +226,7 @@ void RealMeter::loop()
         rgb.setLedColorData(0, 0, 0, 255);
         rgb.show();
 
-        pValues->setValue(valuesMessage.c_str());
+        pValues->setValue(json.c_str());
         pValues->notify();
 
         lastMsg = now;
