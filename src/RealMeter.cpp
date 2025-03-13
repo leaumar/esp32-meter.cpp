@@ -132,6 +132,9 @@ void RealMeter::init()
     meter.begin(115200, SERIAL_8N1, RX1, TX1, true);
     meter.setTimeout(METER_UART_TIMEOUT);
     debug.println("Meter input initialized (cannot output to meter).");
+
+    pValues->setValue("lorem ipsum dolor sit amet");
+    pValues->notify();
 }
 
 // 1-0:1.8.1(003020.519*kWh)
@@ -173,9 +176,6 @@ String readStringUntilWithTimeoutIncludingTerminator(HardwareSerial &serial, cha
 
 void RealMeter::loop()
 {
-    pValues->setValue("abcdefghijklmnopqrstuvwxyz0123456789 lorem ipsum dolor sit amet");
-    pValues->notify();
-
     debug.println("Waiting for telegram.");
     rgb.setLedColorData(0, 0, 255, 0);
     rgb.show();
