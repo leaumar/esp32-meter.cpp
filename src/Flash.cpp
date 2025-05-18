@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include "Flash.h"
-#include "Freenove_WS2812_Lib_for_ESP32.h"
+#include <Freenove_WS2812_Lib_for_ESP32.h>
 
 // usb cable provides power and main serial
 

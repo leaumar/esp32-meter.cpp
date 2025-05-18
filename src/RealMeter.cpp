@@ -6,7 +6,7 @@
 #include "BLEUtils.h"
 #include "BLE2902.h"
 #include "BLE2904.h"
-#include "Freenove_WS2812_Lib_for_ESP32.h"
+#include <Freenove_WS2812_Lib_for_ESP32.h>
 #include "esp_gatt_common_api.h"
 #include <string>
 #include <regex>
