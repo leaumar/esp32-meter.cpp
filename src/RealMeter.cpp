@@ -164,7 +164,7 @@ String regex_match(String &data, const std::regex &pattern)
 {
     std::string stdData = data.c_str();
     std::smatch match;
-    return std::regex_search(stdData, match, pattern) ? String(match[1].str().c_str()) : "<no match>";
+    return std::regex_search(stdData, match, pattern) && match.size() > 1 ? String(match[1].str().c_str()) : "<no match>";
 }
 
 // because serial.readStringUntil doesn't include the terminator, you can't tell if the string is complete or timed out
