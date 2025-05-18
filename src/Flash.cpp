@@ -6,11 +6,10 @@
 
 // this causes a redefine warning but omitting this breaks the led and strip
 #define LED_BUILTIN 2
-#define LEDS_PIN 48
 #define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof((arr)[0]))
 
 // there's 1 rgb led in the strip and it only has channel 0
-Freenove_ESP32_WS2812 strip = Freenove_ESP32_WS2812(1, LEDS_PIN, 0, TYPE_GRB);
+Freenove_ESP32_WS2812 strip = Freenove_ESP32_WS2812(1, PIN_NEOPIXEL, 0, TYPE_GRB);
 
 int colorSequence[5][3] = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}, {255, 255, 255}, {0, 0, 0}};
 

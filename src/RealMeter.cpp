@@ -37,14 +37,13 @@
 // send realistic telegrams from the isolator terminal and watch the board respond
 
 #define LED_BUILTIN 2
-#define LEDS_PIN 48
 
 HardwareSerial &debug = Serial;
 HardwareSerial meter(1);
 #define METER_UART_TIMEOUT 1500
 
 // there's 1 rgb led in the strip and it only has channel 0
-Freenove_ESP32_WS2812 rgb = Freenove_ESP32_WS2812(1, LEDS_PIN, 0, TYPE_GRB);
+Freenove_ESP32_WS2812 rgb = Freenove_ESP32_WS2812(1, PIN_NEOPIXEL, 0, TYPE_GRB);
 
 BLECharacteristic *pValues;
 unsigned long lastMsg = 0;
