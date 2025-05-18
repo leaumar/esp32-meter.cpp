@@ -4,8 +4,10 @@
 
 // usb cable provides power and main serial
 
-// this causes a redefine warning but omitting this breaks the led and strip
+// SDK sets pin to 97 but it's actually 2
+#undef LED_BUILTIN
 #define LED_BUILTIN 2
+
 #define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof((arr)[0]))
 
 // there's 1 rgb led in the strip and it only has channel 0

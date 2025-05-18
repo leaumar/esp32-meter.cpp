@@ -13,6 +13,8 @@
 //
 // type messages into isolator and check echo on main serial
 
+// SDK sets pin to 97 but it's actually 2
+#undef LED_BUILTIN
 #define LED_BUILTIN 2
 
 HardwareSerial fakeMeter(1);

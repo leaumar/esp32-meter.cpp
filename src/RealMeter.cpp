@@ -36,6 +36,8 @@
 //
 // send realistic telegrams from the isolator terminal and watch the board respond
 
+// SDK sets pin to 97 but it's actually 2
+#undef LED_BUILTIN
 #define LED_BUILTIN 2
 
 HardwareSerial &debug = Serial;
