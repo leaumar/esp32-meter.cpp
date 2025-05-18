@@ -210,7 +210,7 @@ void RealMeter::loop()
 
     if (telegram.charAt(telegram.length() - 1) != '!')
     {
-        debug.printf("Didn't read properly, trying again:\n%s\n", telegram);
+        debug.printf("Didn't read properly, trying again:\n%s\n", telegram.c_str());
         return;
     }
 
@@ -218,7 +218,7 @@ void RealMeter::loop()
     String hash = readStringUntilWithTimeoutIncludingTerminator(meter, '\n', METER_UART_TIMEOUT);
     telegram += hash;
 
-    debug.printf("Received telegram, %d chars: %s\n", telegram.length(), telegram);
+    debug.printf("Received telegram, %d chars: %s\n", telegram.length(), telegram.c_str());
 
     rgb.setLedColorData(0, 255, 0, 0);
     rgb.show();
@@ -227,7 +227,10 @@ void RealMeter::loop()
     String nightPower = regex_match(telegram, nightPowerR);
     String json = formatJson(dayPower, nightPower);
 
-    debug.printf("Parsed: \"%s\".\n", json);
+    // TODO using std::string instead of String avoids this mess where sometimes the logged text is garbage
+    debug.printf("Parsed day: \"%s\".\n", dayPower.c_str());
+    debug.printf("Parsed night: \"%s\".\n", nightPower.c_str());
+    debug.printf("Parsed json: \"%s\".\n", json.c_str());
 
     delay(100); // give time to see the previous light color
 
