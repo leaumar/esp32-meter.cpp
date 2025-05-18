@@ -210,7 +210,7 @@ void RealMeter::loop()
 
     if (telegram.charAt(telegram.length() - 1) != '!')
     {
-        debug.printf("Didn't read properly, trying again:\n%s\n");
+        debug.printf("Didn't read properly, trying again:\n%s\n", telegram);
         return;
     }
 
