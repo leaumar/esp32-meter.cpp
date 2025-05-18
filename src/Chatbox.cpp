@@ -2,9 +2,15 @@
 #include "Chatbox.h"
 #include <HardwareSerial.h>
 
+// two terminals can send text to each other in realtime, nothing meter specific
+//
 // usb cable provides power and main serial
-// connect isolator tx (without inverter) to pin 15, rx to pin 16 for second serial
-// monitor isolator with C:\Users\leaumar\.platformio\penv\Scripts\platformio.exe device monitor -p com7 -b 115200 --echo
+// connect isolator (3.3V) to board: tx to pin 15, rx to pin 16
+//
+// find ports with ~\.platformio\penv\Scripts\platformio.exe device list
+// monitor isolator with ~\.platformio\penv\Scripts\platformio.exe device monitor -p comN -b 115200 --echo
+// monitor board with ~\.platformio\penv\Scripts\platformio.exe device monitor -p comN -b 115200 --echo
+//
 // type messages back and forth
 
 HardwareSerial chat(1);

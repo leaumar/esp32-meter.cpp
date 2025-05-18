@@ -11,11 +11,30 @@
 #include <string>
 #include <regex>
 
+// connect meter interface to board: red Vcc to 5V, black gnd to gnd, purple pullup to 3.3V, green inverted tx with pullup to pin 15
+// find ports with ~\.platformio\penv\Scripts\platformio.exe device list
+//
+// # real meter attachment
+//
+// attach the board with meter interface to the meter so it works
+//
 // the usb cable must not be used because the meter provides power
-// connect meter Vcc to 5V, gnd to gnd, pullup to 3.3V, meter inverted tx with pullup to pin 15
-// for debugging, connect isolator rx to board tx, gnd to gnd, do not connect Vcc or tx
-// find port with C:\Users\leaumar\.platformio\penv\Scripts\platformio.exe device list
-// monitor isolator with C:\Users\leaumar\.platformio\penv\Scripts\platformio.exe device monitor -p com7 -b 115200
+// for debugging, connect isolator (3.3V) to board: rx to tx, gnd to gnd, do not connect Vcc or tx
+// monitor isolator with ~\.platformio\penv\Scripts\platformio.exe device monitor -p comN -b 115200
+//
+// watch logs streaming in
+//
+// # simulated meter attachment
+//
+// we'll run the real code to properly test the whole thing, but it's not exactly the same setup
+//
+// use the usb cable for power and debugging
+// connect isolator (5V) to meter interface via inverter: gnd and tx only
+//
+// monitor board log with ~\.platformio\penv\Scripts\platformio.exe device monitor -p comN -b 115200
+// monitor isolator with ~\.platformio\penv\Scripts\platformio.exe device monitor -p comN -b 115200 --echo
+//
+// send realistic telegrams from the isolator terminal and watch the board respond
 
 #define LED_BUILTIN 2
 #define LEDS_PIN 48
