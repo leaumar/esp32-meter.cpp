@@ -22,7 +22,7 @@ void Chatbox::init()
     Serial.begin(115200);
     Serial.println("ESP32S3 initialization completed! Write something here to send it to the other serial");
 
-    chat.begin(115200, SERIAL_8N1, RX1, TX1);
+    chat.begin(115200, SERIAL_8N1);
     chat.println("ESP32S3 initialization completed! Write something here to send it to the other serial");
 }
 

@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include "Flash.h"
-#include <Freenove_WS2812_Lib_for_ESP32.h>
+#include <Adafruit_NeoPixel.h>
 
 // usb cable provides power and main serial
 
@@ -8,10 +8,12 @@
 #undef LED_BUILTIN
 #define LED_BUILTIN 2
 
+#define PIN_NEOPIXEL 48
+
 #define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof((arr)[0]))
 
 // there's 1 rgb led in the strip and it only has channel 0
-Freenove_ESP32_WS2812 strip = Freenove_ESP32_WS2812(1, PIN_NEOPIXEL, 0, TYPE_GRB);
+Adafruit_NeoPixel strip(1, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 
 int colorSequence[5][3] = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}, {255, 255, 255}, {0, 0, 0}};
 
@@ -40,7 +42,7 @@ void Flash::loop()
 
     for (int i = 0; i < ARRAY_LENGTH(colorSequence); i++)
     {
-        strip.setLedColorData(0, colorSequence[i][0], colorSequence[i][1], colorSequence[i][2]);
+        strip.setPixelColor(0, colorSequence[i][0], colorSequence[i][1], colorSequence[i][2]);
         strip.show();
         delay(speed);
     }

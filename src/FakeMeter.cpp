@@ -26,7 +26,7 @@ void FakeMeter::init()
     Serial.begin(115200);
     Serial.println("ESP32S3 debug output initialized (will not respond to input)");
 
-    fakeMeter.begin(115200, SERIAL_8N1, RX1, TX1, true);
+    fakeMeter.begin(115200, SERIAL_8N1, -1, -1, true);
     Serial.println("ESP32S3 meter input initialized (cannot output to meter)");
 }
 

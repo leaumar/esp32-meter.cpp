@@ -6,7 +6,7 @@
 #include "BLEUtils.h"
 #include "BLE2902.h"
 #include "BLE2904.h"
-#include <Freenove_WS2812_Lib_for_ESP32.h>
+#include <Adafruit_NeoPixel.h>
 #include "esp_gatt_common_api.h"
 #include <string>
 #include <regex>
@@ -40,12 +40,14 @@
 #undef LED_BUILTIN
 #define LED_BUILTIN 2
 
+#define PIN_NEOPIXEL 48
+
 HardwareSerial &debug = Serial;
 HardwareSerial meter(1);
 #define METER_UART_TIMEOUT 1500
 
 // there's 1 rgb led in the strip and it only has channel 0
-Freenove_ESP32_WS2812 rgb = Freenove_ESP32_WS2812(1, PIN_NEOPIXEL, 0, TYPE_GRB);
+Adafruit_NeoPixel rgb(1, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 
 BLECharacteristic *pValues;
 unsigned long lastMsg = 0;
@@ -142,13 +144,13 @@ void RealMeter::init()
     digitalWrite(LED_BUILTIN, LOW);
     rgb.begin();
     rgb.setBrightness(10);
-    rgb.setLedColorData(0, 0, 0, 0);
+    rgb.setPixelColor(0, 0, 0, 0);
     debug.println("Status leds initialized.");
 
     setupBLE("ESP32-S3 MLE");
     debug.println("BLE broadcast initialized.");
 
-    meter.begin(115200, SERIAL_8N1, RX1, TX1, true);
+    meter.begin(115200, SERIAL_8N1, -1, -1, true);
     meter.setTimeout(METER_UART_TIMEOUT);
     debug.println("Meter input initialized (cannot output to meter).");
 
@@ -196,7 +198,7 @@ String readStringUntilWithTimeoutIncludingTerminator(HardwareSerial &serial, cha
 void RealMeter::loop()
 {
     debug.println("Waiting for telegram.");
-    rgb.setLedColorData(0, 0, 255, 0);
+    rgb.setPixelColor(0, 0, 255, 0);
     rgb.show();
 
     // ! prefixes the hash at the end of a message
@@ -221,7 +223,7 @@ void RealMeter::loop()
 
     debug.printf("Received telegram, %d chars: %s\n", telegram.length(), telegram.c_str());
 
-    rgb.setLedColorData(0, 255, 0, 0);
+    rgb.setPixelColor(0, 255, 0, 0);
     rgb.show();
 
     String dayPower = regex_match(telegram, dayPowerR);
@@ -244,7 +246,7 @@ void RealMeter::loop()
     }
 
     debug.println("Broadcasting values.");
-    rgb.setLedColorData(0, 0, 0, 255);
+    rgb.setPixelColor(0, 0, 0, 255);
     rgb.show();
 
     pValues->setValue(json.c_str());
