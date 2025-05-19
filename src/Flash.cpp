@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "Flash.h"
 #include <Adafruit_NeoPixel.h>
+#include <iterator>
 
 // usb cable provides power and main serial
 
