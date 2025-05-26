@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "Flash.h"
+#include "polyfill.h"
 #include <Adafruit_NeoPixel.h>
 
 // usb cable provides power and main serial
@@ -9,8 +10,6 @@
 #define LED_BUILTIN 2
 
 #define PIN_NEOPIXEL 48
-
-#define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof((arr)[0]))
 
 // there's 1 rgb led in the strip and it only has channel 0
 Adafruit_NeoPixel strip(1, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
@@ -40,7 +39,7 @@ void Flash::loop()
     digitalWrite(LED_BUILTIN, LOW);
     delay(speed);
 
-    for (int i = 0; i < ARRAY_LENGTH(colorSequence); i++)
+    for (int i = 0; i < std::size(colorSequence); i++)
     {
         strip.setPixelColor(0, colorSequence[i][0], colorSequence[i][1], colorSequence[i][2]);
         strip.show();
