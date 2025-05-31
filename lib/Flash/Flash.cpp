@@ -1,14 +1,9 @@
 #include <ESP32_LED.h>
 #include "Flash.h"
 #include "polyfill.h"
-#include <Adafruit_NeoPixel.h>
+#include <ESP32_RGB.h>
 
 // usb cable provides power and main serial
-
-#define PIN_NEOPIXEL 48
-
-// there's 1 rgb led in the strip and it only has channel 0
-Adafruit_NeoPixel strip(1, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 
 int colorSequence[5][3] = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}, {255, 255, 255}, {0, 0, 0}};
 
@@ -16,8 +11,7 @@ void Flash::init()
 {
     pinMode(LED_BUILTIN, OUTPUT);
 
-    strip.begin();
-    strip.setBrightness(10);
+    rgbStrip.setBrightness(10);
 
     Serial.begin(115200);
     Serial.println("ESP32S3 initialization completed!");
@@ -37,8 +31,7 @@ void Flash::loop()
 
     for (int i = 0; i < std::size(colorSequence); i++)
     {
-        strip.setPixelColor(0, colorSequence[i][0], colorSequence[i][1], colorSequence[i][2]);
-        strip.show();
+        rgbStrip.setColor(colorSequence[i][0], colorSequence[i][1], colorSequence[i][2]);
         delay(speed);
     }
 

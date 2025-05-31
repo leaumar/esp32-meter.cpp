@@ -6,7 +6,7 @@
 #include "BLEUtils.h"
 #include "BLE2902.h"
 #include "BLE2904.h"
-#include <Adafruit_NeoPixel.h>
+#include <ESP32_RGB.h>
 #include "esp_gatt_common_api.h"
 #include <string>
 #include <regex>
@@ -36,14 +36,9 @@
 //
 // send realistic telegrams from the isolator terminal and watch the board respond
 
-#define PIN_NEOPIXEL 48
-
 HardwareSerial &debug = Serial;
 HardwareSerial meter(1);
 #define METER_UART_TIMEOUT 1500
-
-// there's 1 rgb led in the strip and it only has channel 0
-Adafruit_NeoPixel rgb(1, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 
 BLECharacteristic *pValues;
 unsigned long lastMsg = 0;
@@ -138,9 +133,8 @@ void RealMeter::init()
 
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, LOW);
-    rgb.begin();
-    rgb.setBrightness(10);
-    rgb.setPixelColor(0, 0, 0, 0);
+    rgbStrip.setBrightness(10);
+    rgbStrip.setColor(0, 0, 0);
     debug.println("Status leds initialized.");
 
     setupBLE("ESP32-S3 MLE");
@@ -194,8 +188,7 @@ String readStringUntilWithTimeoutIncludingTerminator(HardwareSerial &serial, cha
 void RealMeter::loop()
 {
     debug.println("Waiting for telegram.");
-    rgb.setPixelColor(0, 0, 255, 0);
-    rgb.show();
+    rgbStrip.setColor(0, 255, 0);
 
     // ! prefixes the hash at the end of a message
     // a message should arrive every second
@@ -219,8 +212,7 @@ void RealMeter::loop()
 
     debug.printf("Received telegram, %d chars: %s\n", telegram.length(), telegram.c_str());
 
-    rgb.setPixelColor(0, 255, 0, 0);
-    rgb.show();
+    rgbStrip.setColor(255, 0, 0);
 
     String dayPower = regex_match(telegram, dayPowerR);
     String nightPower = regex_match(telegram, nightPowerR);
@@ -242,8 +234,7 @@ void RealMeter::loop()
     }
 
     debug.println("Broadcasting values.");
-    rgb.setPixelColor(0, 0, 0, 255);
-    rgb.show();
+    rgbStrip.setColor(0, 0, 255);
 
     pValues->setValue(json.c_str());
     pValues->notify();
