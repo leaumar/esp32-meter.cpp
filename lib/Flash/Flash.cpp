@@ -1,13 +1,9 @@
-#include <Arduino.h>
+#include <ESP32_LED.h>
 #include "Flash.h"
 #include "polyfill.h"
 #include <Adafruit_NeoPixel.h>
 
 // usb cable provides power and main serial
-
-// SDK sets pin to 97 but it's actually 2
-#undef LED_BUILTIN
-#define LED_BUILTIN 2
 
 #define PIN_NEOPIXEL 48
 

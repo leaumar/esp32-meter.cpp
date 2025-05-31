@@ -1,4 +1,4 @@
-#include <Arduino.h>
+#include <ESP32_LED.h>
 #include "FakeMeter.h"
 #include <HardwareSerial.h>
 
@@ -12,10 +12,6 @@
 // monitor isolator with ~\.platformio\penv\Scripts\platformio.exe device monitor -p com7 -b 115200 --echo
 //
 // type messages into isolator and check echo on main serial
-
-// SDK sets pin to 97 but it's actually 2
-#undef LED_BUILTIN
-#define LED_BUILTIN 2
 
 HardwareSerial fakeMeter(1);
 
