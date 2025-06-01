@@ -1,0 +1,13 @@
+BasedOnStyle: LLVM
+IndentWidth: 4 # default = 2
+SortIncludes: true
+IncludeBlocks: Regroup
+NamespaceIndentation: All # not indenting a namespace is just misleading
+FixNamespaceComments: false # don't add useless trailing comment
+ReflowComments: false # let devs wrap comments
+ColumnLimit: 120 # we have big monitors now
+AllowShortFunctionsOnASingleLine: Empty # only {} should be 1 line
+AlignAfterOpenBracket: BlockIndent # don't let indentation depend on names
+AlignOperands: DontAlign # don't let indentation depend on expression length
+BreakAfterReturnType: Automatic
+PenaltyReturnTypeOnItsOwnLine: 999
