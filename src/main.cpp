@@ -1,4 +1,5 @@
 #include "Chatbox.h"
+#include "Chirp.h"
 #include "FakeMeter.h"
 #include "Flash.h"
 #include "Mode.h"

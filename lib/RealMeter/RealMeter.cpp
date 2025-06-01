@@ -1,12 +1,6 @@
 #include "RealMeter.h"
 
-#include "BLE2902.h"
-#include "BLE2904.h"
-#include "BLEDevice.h"
-#include "BLEServer.h"
-#include "BLEUtils.h"
-#include "esp_gatt_common_api.h"
-
+#include <ESP32_BLE.h>
 #include <ESP32_LED.h>
 #include <ESP32_RGB.h>
 #include <HardwareSerial.h>
@@ -42,81 +36,24 @@ HardwareSerial &debug = Serial;
 HardwareSerial meter(1);
 #define METER_UART_TIMEOUT 1500
 
-BLECharacteristic *pValues;
+ESP_32::BLE::Instance *server = nullptr;
 unsigned long lastMsg = 0;
-#define SERVICE_UUID "727EBBC9-A355-44BA-A81A-46B13689FF59"
-#define VALUES_UUID_TX "97E7B235-51D3-46D0-B426-899C28BFB13B"
 
-class MyServerCallbacks : public BLEServerCallbacks {
-  private:
-    unsigned int clients = 0;
-
+class MyCallbacks : public ESP_32::BLE::Callbacks {
   public:
-    void onConnect(BLEServer *pServer) {
-        clients += 1;
-        uint16_t connId = pServer->getConnId();
-        debug.printf("BLE listener connected, MTU = %d.\n", pServer->getPeerMTU(connId));
+    void onConnect(ESP_32::BLE::OnConnect onConnect) override {
+        debug.printf("BLE listener connected, MTU = %d.\n", onConnect.mtu);
         // server cannot negotiate mtu
     }
 
-    void onDisconnect(BLEServer *pServer) {
+    void onDisconnect(ESP_32::BLE::OnDisconnect onDisconnect) override {
         debug.println("BLE listener disconnected.");
-        // prevent going negative just in case
-        clients -= clients > 0 ? 1 : 0;
-
-        // "small delay prevents crashes" according to chatgpt
-        delay(500);
-        pServer->getAdvertising()->start();
-        debug.println("Restarted advertising.");
     }
 
-    unsigned int countClients() {
-        return clients;
-    }
-
-    void onMtuChanged(BLEServer *pServer, esp_ble_gatts_cb_param_t *param) {
-        debug.printf("BLE MTU negotiated (by client) to %d bytes.\n", param->mtu.mtu);
+    void onMtuChanged(ESP_32::BLE::OnMtu onMtu) override {
+        debug.printf("BLE MTU negotiated (by client) to %d bytes.\n", onMtu.mtu);
     }
 };
-
-MyServerCallbacks *serverCallbacks = new MyServerCallbacks();
-
-void setupBLE(const String &BLEName) {
-    BLEDevice::init(BLEName.c_str());
-    // subscription-pushed values are truncated to MTU
-    esp_err_t mtuError = BLEDevice::setMTU(ESP_GATT_MAX_MTU_SIZE);
-    if (mtuError != ESP_OK) {
-        debug.printf("MTU failure: %s\n", mtuError);
-    }
-
-    BLEServer *pServer = BLEDevice::createServer();
-    pServer->setCallbacks(serverCallbacks);
-
-    BLEService *pService = pServer->createService(SERVICE_UUID);
-    // TODO pushed values are still truncated even when mtu=517
-    pValues = pService->createCharacteristic(
-        VALUES_UUID_TX, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY
-    );
-
-    // Characteristic User Description
-    BLEDescriptor *friendlyName = new BLEDescriptor((uint16_t)0x2901);
-    friendlyName->setValue("Meter readings");
-    pValues->addDescriptor(friendlyName);
-
-    // Client Characteristic Configuration
-    // enable notifications
-    pValues->addDescriptor(new BLE2902());
-
-    // Characteristic Presentation Format
-    // advertise it as utf8 string
-    // https://www.bluetooth.com/specifications/assigned-numbers/
-    BLE2904 *format = new BLE2904();
-    format->setFormat(BLE2904::FORMAT_UTF8);
-    pValues->addDescriptor(format);
-
-    pService->start();
-    pServer->getAdvertising()->start();
-}
 
 String formatJson(String day, String night) {
     return "{\"day\": \"" + day + "\", \"night\": \"" + night + "\"}";
@@ -131,15 +68,21 @@ void RealMeter::init() {
     ESP_32::RGB.setColor(0, 0, 0);
     debug.println("Status leds initialized.");
 
-    setupBLE("ESP32-S3 MLE");
+    server = new ESP_32::BLE::Instance(
+        std::move(
+            ESP_32::BLE::init(
+                {"ESP32-S3 MLE", debug, std::make_shared<MyCallbacks>()}, {"727EBBC9-A355-44BA-A81A-46B13689FF59"},
+                {"97E7B235-51D3-46D0-B426-899C28BFB13B", "Meter readings"}
+            )
+        )
+    );
     debug.println("BLE broadcast initialized.");
 
     meter.begin(115200, SERIAL_8N1, -1, -1, true);
     meter.setTimeout(METER_UART_TIMEOUT);
     debug.println("Meter input initialized (cannot output to meter).");
 
-    pValues->setValue(formatJson("000000.NaN*kWh", "000000.NaN*kWh").c_str());
-    pValues->notify();
+    server->setValue(formatJson("000000.NaN*kWh", "000000.NaN*kWh").c_str());
 }
 
 // 1-0:1.8.1(003020.519*kWh)
@@ -212,7 +155,7 @@ void RealMeter::loop() {
 
     delay(100); // give time to see the previous light color
 
-    debug.printf("Currently %d BLE clients connected.\n", serverCallbacks->countClients());
+    debug.printf("Currently %d BLE clients connected.\n", server->countClients());
 
     if (millis() - lastMsg < 100) {
         debug.println("Skipping broadcast because of short interval.");
@@ -222,8 +165,7 @@ void RealMeter::loop() {
     debug.println("Broadcasting values.");
     ESP_32::RGB.setColor(0, 0, 255);
 
-    pValues->setValue(json.c_str());
-    pValues->notify();
+    server->setValue(json.c_str());
 
     lastMsg = millis();
     delay(100); // give time to see the previous light color
