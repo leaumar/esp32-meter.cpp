@@ -2,9 +2,8 @@
 
 #include "Mode.h"
 
-class RealMeter : public Mode
-{
-public:
+class RealMeter : public Mode {
+  public:
     void init() override;
     void loop() override;
 };

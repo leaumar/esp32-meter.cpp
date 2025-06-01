@@ -1,5 +1,6 @@
-#include <ESP32_LED.h>
 #include "Chatbox.h"
+
+#include <ESP32_LED.h>
 #include <HardwareSerial.h>
 
 // two terminals can send text to each other in realtime, nothing meter specific
@@ -15,8 +16,7 @@
 
 HardwareSerial chat(1);
 
-void Chatbox::init()
-{
+void Chatbox::init() {
     pinMode(LED_BUILTIN, OUTPUT);
 
     Serial.begin(115200);
@@ -26,14 +26,11 @@ void Chatbox::init()
     chat.println("ESP32S3 initialization completed! Write something here to send it to the other serial");
 }
 
-void Chatbox::loop()
-{
-    while (chat.available())
-    {
+void Chatbox::loop() {
+    while (chat.available()) {
         Serial.write(chat.read());
     }
-    while (Serial.available())
-    {
+    while (Serial.available()) {
         chat.write(Serial.read());
     }
 }

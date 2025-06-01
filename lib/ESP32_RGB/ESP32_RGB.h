@@ -2,23 +2,19 @@
 
 #include <Adafruit_NeoPixel.h>
 
-class RGB
-{
-private:
+class RGB {
+  private:
     // it's on pin 48 and has just 1 unit
     Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, 48, NEO_GRB + NEO_KHZ800);
     bool begun = false;
 
-public:
-    void setBrightness(uint8_t level)
-    {
+  public:
+    void setBrightness(uint8_t level) {
         strip.setBrightness(level);
     }
 
-    void setColor(uint8_t r, uint8_t g, uint8_t b)
-    {
-        if (!begun)
-        {
+    void setColor(uint8_t r, uint8_t g, uint8_t b) {
+        if (!begun) {
             strip.begin();
             begun = true;
         }

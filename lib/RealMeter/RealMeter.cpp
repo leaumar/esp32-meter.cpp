@@ -1,15 +1,17 @@
-#include <ESP32_LED.h>
 #include "RealMeter.h"
-#include <HardwareSerial.h>
+
+#include "BLE2902.h"
+#include "BLE2904.h"
 #include "BLEDevice.h"
 #include "BLEServer.h"
 #include "BLEUtils.h"
-#include "BLE2902.h"
-#include "BLE2904.h"
-#include <ESP32_RGB.h>
 #include "esp_gatt_common_api.h"
-#include <string>
+
+#include <ESP32_LED.h>
+#include <ESP32_RGB.h>
+#include <HardwareSerial.h>
 #include <regex>
+#include <string>
 
 // connect meter interface to board: red Vcc to 5V, black gnd to gnd, purple pullup to 3.3V, green inverted tx with pullup to pin 15
 // find ports with ~\.platformio\penv\Scripts\platformio.exe device list
@@ -45,22 +47,19 @@ unsigned long lastMsg = 0;
 #define SERVICE_UUID "727EBBC9-A355-44BA-A81A-46B13689FF59"
 #define VALUES_UUID_TX "97E7B235-51D3-46D0-B426-899C28BFB13B"
 
-class MyServerCallbacks : public BLEServerCallbacks
-{
-private:
+class MyServerCallbacks : public BLEServerCallbacks {
+  private:
     unsigned int clients = 0;
 
-public:
-    void onConnect(BLEServer *pServer)
-    {
+  public:
+    void onConnect(BLEServer *pServer) {
         clients += 1;
         uint16_t connId = pServer->getConnId();
         debug.printf("BLE listener connected, MTU = %d.\n", pServer->getPeerMTU(connId));
         // server cannot negotiate mtu
     }
 
-    void onDisconnect(BLEServer *pServer)
-    {
+    void onDisconnect(BLEServer *pServer) {
         debug.println("BLE listener disconnected.");
         // prevent going negative just in case
         clients -= clients > 0 ? 1 : 0;
@@ -71,26 +70,22 @@ public:
         debug.println("Restarted advertising.");
     }
 
-    unsigned int countClients()
-    {
+    unsigned int countClients() {
         return clients;
     }
 
-    void onMtuChanged(BLEServer *pServer, esp_ble_gatts_cb_param_t *param)
-    {
+    void onMtuChanged(BLEServer *pServer, esp_ble_gatts_cb_param_t *param) {
         debug.printf("BLE MTU negotiated (by client) to %d bytes.\n", param->mtu.mtu);
     }
 };
 
 MyServerCallbacks *serverCallbacks = new MyServerCallbacks();
 
-void setupBLE(const String &BLEName)
-{
+void setupBLE(const String &BLEName) {
     BLEDevice::init(BLEName.c_str());
     // subscription-pushed values are truncated to MTU
     esp_err_t mtuError = BLEDevice::setMTU(ESP_GATT_MAX_MTU_SIZE);
-    if (mtuError != ESP_OK)
-    {
+    if (mtuError != ESP_OK) {
         debug.printf("MTU failure: %s\n", mtuError);
     }
 
@@ -99,7 +94,9 @@ void setupBLE(const String &BLEName)
 
     BLEService *pService = pServer->createService(SERVICE_UUID);
     // TODO pushed values are still truncated even when mtu=517
-    pValues = pService->createCharacteristic(VALUES_UUID_TX, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+    pValues = pService->createCharacteristic(
+        VALUES_UUID_TX, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY
+    );
 
     // Characteristic User Description
     BLEDescriptor *friendlyName = new BLEDescriptor((uint16_t)0x2901);
@@ -121,13 +118,11 @@ void setupBLE(const String &BLEName)
     pServer->getAdvertising()->start();
 }
 
-String formatJson(String day, String night)
-{
+String formatJson(String day, String night) {
     return "{\"day\": \"" + day + "\", \"night\": \"" + night + "\"}";
 }
 
-void RealMeter::init()
-{
+void RealMeter::init() {
     debug.begin(115200);
     debug.println("Debug output initialized (will not respond to input).");
 
@@ -153,8 +148,7 @@ const std::regex dayPowerR(R"(1-0:1.8.1\(0*(\d+\.\d+\*kWh)\))");
 // 1-0:1.8.2(003080.021*kWh)
 const std::regex nightPowerR(R"(1-0:1.8.2\(0*(\d+\.\d+\*kWh)\))");
 
-String regex_match(String &data, const std::regex &pattern)
-{
+String regex_match(String &data, const std::regex &pattern) {
     std::string stdData = data.c_str();
     std::smatch match;
     bool matches = std::regex_search(stdData, match, pattern) && match.size() > 1;
@@ -162,22 +156,18 @@ String regex_match(String &data, const std::regex &pattern)
 }
 
 // because serial.readStringUntil doesn't include the terminator, you can't tell if the string is complete or timed out
-String readStringUntilWithTimeoutIncludingTerminator(HardwareSerial &serial, char terminator, unsigned long timeout)
-{
+String readStringUntilWithTimeoutIncludingTerminator(HardwareSerial &serial, char terminator, unsigned long timeout) {
     unsigned long startMillis = millis();
     String received = "";
 
-    while (millis() - startMillis < timeout)
-    {
+    while (millis() - startMillis < timeout) {
         // while-ing might keep it reading forever
         int available = serial.available();
-        for (int i = 0; i < available; i++)
-        {
+        for (int i = 0; i < available; i++) {
             char c = serial.read();
             received += c;
 
-            if (c == terminator)
-            {
+            if (c == terminator) {
                 return received;
             }
         }
@@ -186,8 +176,7 @@ String readStringUntilWithTimeoutIncludingTerminator(HardwareSerial &serial, cha
     return received;
 }
 
-void RealMeter::loop()
-{
+void RealMeter::loop() {
     debug.println("Waiting for telegram.");
     rgbStrip.setColor(0, 255, 0);
 
@@ -195,14 +184,12 @@ void RealMeter::loop()
     // a message should arrive every second
     String telegram = readStringUntilWithTimeoutIncludingTerminator(meter, '!', METER_UART_TIMEOUT);
 
-    if (telegram.length() == 0)
-    {
+    if (telegram.length() == 0) {
         debug.println("Nothing received.");
         return;
     }
 
-    if (telegram.charAt(telegram.length() - 1) != '!')
-    {
+    if (telegram.charAt(telegram.length() - 1) != '!') {
         debug.printf("Didn't read properly, trying again:\n%s\n", telegram.c_str());
         return;
     }
@@ -228,8 +215,7 @@ void RealMeter::loop()
 
     debug.printf("Currently %d BLE clients connected.\n", serverCallbacks->countClients());
 
-    if (millis() - lastMsg < 100)
-    {
+    if (millis() - lastMsg < 100) {
         debug.println("Skipping broadcast because of short interval.");
         return;
     }

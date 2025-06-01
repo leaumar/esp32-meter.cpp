@@ -1,17 +1,15 @@
-#include "Mode.h"
 #include "Chatbox.h"
-#include "Flash.h"
 #include "FakeMeter.h"
+#include "Flash.h"
+#include "Mode.h"
 #include "RealMeter.h"
 
 Mode *mode = new RealMeter();
 
-void setup()
-{
+void setup() {
     mode->init();
 }
 
-void loop()
-{
+void loop() {
     mode->loop();
 }

@@ -1,5 +1,6 @@
-#include <ESP32_LED.h>
 #include "FakeMeter.h"
+
+#include <ESP32_LED.h>
 #include <HardwareSerial.h>
 
 // testing the meter interface by using the isolator with inverter to mimick the meter
@@ -15,8 +16,7 @@
 
 HardwareSerial fakeMeter(1);
 
-void FakeMeter::init()
-{
+void FakeMeter::init() {
     pinMode(LED_BUILTIN, OUTPUT);
 
     Serial.begin(115200);
@@ -26,14 +26,11 @@ void FakeMeter::init()
     Serial.println("ESP32S3 meter input initialized (cannot output to meter)");
 }
 
-void FakeMeter::loop()
-{
-    if (fakeMeter.available())
-    {
+void FakeMeter::loop() {
+    if (fakeMeter.available()) {
         digitalWrite(LED_BUILTIN, HIGH);
 
-        while (fakeMeter.available())
-        {
+        while (fakeMeter.available()) {
             Serial.write(fakeMeter.read());
         }
 
