@@ -128,7 +128,6 @@ void RealMeter::init() {
 
     pinMode(ESP_32::LED, OUTPUT);
     digitalWrite(ESP_32::LED, LOW);
-    ESP_32::RGB.setBrightness(10);
     ESP_32::RGB.setColor(0, 0, 0);
     debug.println("Status leds initialized.");
 

@@ -12,27 +12,33 @@ int colorSequence[5][3] = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}, {255, 255, 255
 void Flash::init() {
     pinMode(ESP_32::LED, OUTPUT);
 
-    ESP_32::RGB.setBrightness(10);
-
     Serial.begin(115200);
     Serial.println("ESP32S3 initialization completed!");
 }
 
-void Flash::loop() {
-    int speed = 200;
+int waitTime = 200;
 
-    Serial.printf("Running time : %.1f s\r\n", millis() / 1000.0f);
-    delay(speed);
+void Flash::loop() {
+    delay(waitTime);
 
     digitalWrite(ESP_32::LED, HIGH);
-    delay(speed);
+    delay(waitTime);
     digitalWrite(ESP_32::LED, LOW);
-    delay(speed);
+    delay(waitTime);
+
+    float randomBrightness = static_cast<float>(rand()) / RAND_MAX;
+    Serial.printf("Brightness: %.1f\r\n", randomBrightness);
 
     for (int i = 0; i < std::size(colorSequence); i++) {
-        ESP_32::RGB.setColor(colorSequence[i][0], colorSequence[i][1], colorSequence[i][2]);
-        delay(speed);
+        int r = colorSequence[i][0];
+        int g = colorSequence[i][1];
+        int b = colorSequence[i][2];
+        ESP_32::RGB.setColor(
+            static_cast<int>(r * randomBrightness), static_cast<int>(g * randomBrightness),
+            static_cast<int>(b * randomBrightness)
+        );
+        delay(waitTime);
     }
 
-    delay(500);
+    delay(waitTime * 2);
 }

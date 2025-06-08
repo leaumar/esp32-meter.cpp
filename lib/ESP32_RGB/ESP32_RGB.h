@@ -10,10 +10,6 @@ namespace ESP_32 {
         bool begun = false;
 
       public:
-        void setBrightness(uint8_t level) {
-            strip.setBrightness(level);
-        }
-
         void setColor(uint8_t r, uint8_t g, uint8_t b) {
             if (!begun) {
                 strip.begin();
