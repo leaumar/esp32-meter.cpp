@@ -17,7 +17,7 @@
 HardwareSerial fakeMeter(1);
 
 void FakeMeter::init() {
-    pinMode(LED_BUILTIN, OUTPUT);
+    pinMode(ESP_32::LED, OUTPUT);
 
     Serial.begin(115200);
     Serial.println("ESP32S3 debug output initialized (will not respond to input)");
@@ -28,12 +28,12 @@ void FakeMeter::init() {
 
 void FakeMeter::loop() {
     if (fakeMeter.available()) {
-        digitalWrite(LED_BUILTIN, HIGH);
+        digitalWrite(ESP_32::LED, HIGH);
 
         while (fakeMeter.available()) {
             Serial.write(fakeMeter.read());
         }
 
-        digitalWrite(LED_BUILTIN, LOW);
+        digitalWrite(ESP_32::LED, LOW);
     }
 }

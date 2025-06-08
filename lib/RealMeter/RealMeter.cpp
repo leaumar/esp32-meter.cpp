@@ -126,10 +126,10 @@ void RealMeter::init() {
     debug.begin(115200);
     debug.println("Debug output initialized (will not respond to input).");
 
-    pinMode(LED_BUILTIN, OUTPUT);
-    digitalWrite(LED_BUILTIN, LOW);
-    rgbStrip.setBrightness(10);
-    rgbStrip.setColor(0, 0, 0);
+    pinMode(ESP_32::LED, OUTPUT);
+    digitalWrite(ESP_32::LED, LOW);
+    ESP_32::RGB.setBrightness(10);
+    ESP_32::RGB.setColor(0, 0, 0);
     debug.println("Status leds initialized.");
 
     setupBLE("ESP32-S3 MLE");
@@ -178,7 +178,7 @@ String readStringUntilWithTimeoutIncludingTerminator(HardwareSerial &serial, cha
 
 void RealMeter::loop() {
     debug.println("Waiting for telegram.");
-    rgbStrip.setColor(0, 255, 0);
+    ESP_32::RGB.setColor(0, 255, 0);
 
     // ! prefixes the hash at the end of a message
     // a message should arrive every second
@@ -200,7 +200,7 @@ void RealMeter::loop() {
 
     debug.printf("Received telegram, %d chars: %s\n", telegram.length(), telegram.c_str());
 
-    rgbStrip.setColor(255, 0, 0);
+    ESP_32::RGB.setColor(255, 0, 0);
 
     String dayPower = regex_match(telegram, dayPowerR);
     String nightPower = regex_match(telegram, nightPowerR);
@@ -221,7 +221,7 @@ void RealMeter::loop() {
     }
 
     debug.println("Broadcasting values.");
-    rgbStrip.setColor(0, 0, 255);
+    ESP_32::RGB.setColor(0, 0, 255);
 
     pValues->setValue(json.c_str());
     pValues->notify();

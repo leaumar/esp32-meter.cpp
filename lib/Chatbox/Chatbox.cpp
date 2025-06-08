@@ -17,7 +17,7 @@
 HardwareSerial chat(1);
 
 void Chatbox::init() {
-    pinMode(LED_BUILTIN, OUTPUT);
+    pinMode(ESP_32::LED, OUTPUT);
 
     Serial.begin(115200);
     Serial.println("ESP32S3 initialization completed! Write something here to send it to the other serial");
