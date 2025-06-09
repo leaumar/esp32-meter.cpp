@@ -6,7 +6,6 @@
 #include <HardwareSerial.h>
 #include <P1.h>
 #include <regex>
-#include <string>
 
 // connect meter interface to board: red Vcc to 5V, black gnd to gnd, purple pullup to 3.3V, green inverted tx with pullup to pin 15
 // find ports with ~\.platformio\penv\Scripts\platformio.exe device list
@@ -55,7 +54,7 @@ class MyCallbacks : public ESP_32::BLE::Callbacks {
     }
 };
 
-String formatJson(String day, String night) {
+std::string formatJson(std::string day, std::string night) {
     return "{\"day\": \"" + day + "\", \"night\": \"" + night + "\"}";
 }
 
@@ -81,7 +80,7 @@ void RealMeter::init() {
     P1::init(meter);
     debug.println("Meter input initialized (cannot output to meter).");
 
-    server->setValue(formatJson("000000.NaN*kWh", "000000.NaN*kWh").c_str());
+    server->setValue(formatJson("000000.NaN*kWh", "000000.NaN*kWh"));
 }
 
 // 1-0:1.8.1(003020.519*kWh)
@@ -89,11 +88,10 @@ const std::regex dayPowerR(R"(1-0:1.8.1\(0*(\d+\.\d+\*kWh)\))");
 // 1-0:1.8.2(003080.021*kWh)
 const std::regex nightPowerR(R"(1-0:1.8.2\(0*(\d+\.\d+\*kWh)\))");
 
-String regex_match(String &data, const std::regex &pattern) {
-    std::string stdData = data.c_str();
+std::string regex_match(const std::string &data, const std::regex &pattern) {
     std::smatch match;
-    bool matches = std::regex_search(stdData, match, pattern) && match.size() > 1;
-    return matches ? String(match[1].str().c_str()) : "<no match>";
+    bool matches = std::regex_search(data, match, pattern) && match.size() > 1;
+    return matches ? match[1].str() : "<no match>";
 }
 
 void RealMeter::loop() {
@@ -112,16 +110,15 @@ void RealMeter::loop() {
         return;
     }
 
-    String telegram = String(result.value.c_str());
+    std::string telegram = result.value;
     debug.printf("Received telegram, %d chars: %s\n", telegram.length(), telegram.c_str());
 
     ESP_32::RGB.setColor(255, 0, 0);
 
-    String dayPower = regex_match(telegram, dayPowerR);
-    String nightPower = regex_match(telegram, nightPowerR);
-    String json = formatJson(dayPower, nightPower);
+    std::string dayPower = regex_match(telegram, dayPowerR);
+    std::string nightPower = regex_match(telegram, nightPowerR);
+    std::string json = formatJson(dayPower, nightPower);
 
-    // TODO using std::string instead of String avoids this mess where sometimes the logged text is garbage
     debug.printf("Parsed day: \"%s\".\n", dayPower.c_str());
     debug.printf("Parsed night: \"%s\".\n", nightPower.c_str());
     debug.printf("Parsed json: \"%s\".\n", json.c_str());
@@ -138,7 +135,7 @@ void RealMeter::loop() {
     debug.println("Broadcasting values.");
     ESP_32::RGB.setColor(0, 0, 255);
 
-    server->setValue(json.c_str());
+    server->setValue(json);
 
     lastMsg = millis();
     delay(100); // give time to see the previous light color
