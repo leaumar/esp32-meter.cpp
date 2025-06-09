@@ -1,5 +1,6 @@
 #include "RealMeter.h"
 
+#include <ArduinoJson.h>
 #include <ESP32_BLE.h>
 #include <ESP32_LED.h>
 #include <ESP32_RGB.h>
@@ -54,7 +55,12 @@ class MyCallbacks : public ESP_32::BLE::Callbacks {
 };
 
 std::string formatJson(std::string day, std::string night) {
-    return "{\"day\": \"" + day + "\", \"night\": \"" + night + "\"}";
+    StaticJsonDocument<256> doc;
+    doc["day"] = day;
+    doc["night"] = night;
+    std::string json;
+    serializeJson(doc, json);
+    return json;
 }
 
 void RealMeter::init() {

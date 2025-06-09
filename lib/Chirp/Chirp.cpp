@@ -2,6 +2,7 @@
 
 #include "polyfill.h"
 
+#include <ArduinoJson.h>
 #include <ESP32_BLE.h>
 #include <ESP32_LED.h>
 #include <HardwareSerial.h>
@@ -25,6 +26,15 @@ class MyCallbacks : public ESP_32::BLE::Callbacks {
 
 ESP_32::BLE::Instance *server = nullptr;
 
+std::string formatJson(std::string day, std::string night) {
+    StaticJsonDocument<256> doc;
+    doc["day"] = day;
+    doc["night"] = night;
+    std::string json;
+    serializeJson(doc, json);
+    return json;
+}
+
 void Chirp::init() {
     pinMode(ESP_32::LED, OUTPUT);
 
@@ -41,10 +51,11 @@ void Chirp::init() {
 
 void Chirp::loop() {
     int random = rand();
-    Serial.printf("Value: %d, clients: %d\r\n", random, server->countClients());
+    auto json = formatJson(std::to_string(random), std::to_string(random));
+    Serial.printf("Value: %d, clients: %d, json: %s\r\n", random, server->countClients(), json.c_str());
 
     digitalWrite(ESP_32::LED, HIGH);
-    server->setValue("{\"day\": \"" + std::to_string(random) + "\", \"night\": \"" + std::to_string(random) + "\"}");
+    server->setValue(json);
     delay(100);
     digitalWrite(ESP_32::LED, LOW);
 
