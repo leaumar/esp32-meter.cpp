@@ -90,7 +90,7 @@ void RealMeter::init() {
 
 void RealMeter::loop() {
     debug.println("Waiting for telegram.");
-    ESP_32::RGB.setColor(0, 255, 0);
+    ESP_32::RGB.setColor(0, 10, 0);
 
     auto telegram = P1::awaitTelegram(meter);
 
@@ -106,7 +106,7 @@ void RealMeter::loop() {
 
     debug.printf("Received telegram, %d chars: %s\n", telegram.text.length(), telegram.text.c_str());
 
-    ESP_32::RGB.setColor(255, 0, 0);
+    ESP_32::RGB.setColor(10, 0, 0);
 
     auto dayPower = P1::readDayConsumption(telegram);
     auto nightPower = P1::readNightConsumption(telegram);
@@ -126,7 +126,7 @@ void RealMeter::loop() {
     }
 
     debug.println("Broadcasting values.");
-    ESP_32::RGB.setColor(0, 0, 255);
+    ESP_32::RGB.setColor(0, 0, 10);
 
     server->setValue(json);
 
