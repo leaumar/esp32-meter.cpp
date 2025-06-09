@@ -4,6 +4,7 @@
 #include <ESP32_LED.h>
 #include <ESP32_RGB.h>
 #include <HardwareSerial.h>
+#include <P1.h>
 #include <regex>
 #include <string>
 
@@ -34,7 +35,6 @@
 
 HardwareSerial &debug = Serial;
 HardwareSerial meter(1);
-#define METER_UART_TIMEOUT 1500
 
 ESP_32::BLE::Instance *server = nullptr;
 unsigned long lastMsg = 0;
@@ -78,8 +78,7 @@ void RealMeter::init() {
     );
     debug.println("BLE broadcast initialized.");
 
-    meter.begin(115200, SERIAL_8N1, -1, -1, true);
-    meter.setTimeout(METER_UART_TIMEOUT);
+    P1::init(meter);
     debug.println("Meter input initialized (cannot output to meter).");
 
     server->setValue(formatJson("000000.NaN*kWh", "000000.NaN*kWh").c_str());
@@ -97,49 +96,23 @@ String regex_match(String &data, const std::regex &pattern) {
     return matches ? String(match[1].str().c_str()) : "<no match>";
 }
 
-// because serial.readStringUntil doesn't include the terminator, you can't tell if the string is complete or timed out
-String readStringUntilWithTimeoutIncludingTerminator(HardwareSerial &serial, char terminator, unsigned long timeout) {
-    unsigned long startMillis = millis();
-    String received = "";
-
-    while (millis() - startMillis < timeout) {
-        // while-ing might keep it reading forever
-        int available = serial.available();
-        for (int i = 0; i < available; i++) {
-            char c = serial.read();
-            received += c;
-
-            if (c == terminator) {
-                return received;
-            }
-        }
-    }
-
-    return received;
-}
-
 void RealMeter::loop() {
     debug.println("Waiting for telegram.");
     ESP_32::RGB.setColor(0, 255, 0);
 
-    // ! prefixes the hash at the end of a message
-    // a message should arrive every second
-    String telegram = readStringUntilWithTimeoutIncludingTerminator(meter, '!', METER_UART_TIMEOUT);
+    auto result = P1::awaitTelegram(meter);
 
-    if (telegram.length() == 0) {
+    if (result.status == P1::TelegramState::Empty) {
         debug.println("Nothing received.");
         return;
     }
 
-    if (telegram.charAt(telegram.length() - 1) != '!') {
-        debug.printf("Didn't read properly, trying again:\n%s\n", telegram.c_str());
+    if (result.status == P1::TelegramState::Partial) {
+        debug.printf("Didn't read properly, trying again:\n%s\n", result.value.c_str());
         return;
     }
 
-    // the hash is 4 more hex chars and a crlf
-    String hash = readStringUntilWithTimeoutIncludingTerminator(meter, '\n', METER_UART_TIMEOUT);
-    telegram += hash;
-
+    String telegram = String(result.value.c_str());
     debug.printf("Received telegram, %d chars: %s\n", telegram.length(), telegram.c_str());
 
     ESP_32::RGB.setColor(255, 0, 0);
