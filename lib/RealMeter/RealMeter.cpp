@@ -112,9 +112,9 @@ void RealMeter::loop() {
     auto nightPower = P1::readNightConsumption(telegram);
     auto json = formatJson(dayPower, nightPower);
 
-    debug.printf("Parsed day: \"%s\".\n", dayPower.c_str());
-    debug.printf("Parsed night: \"%s\".\n", nightPower.c_str());
-    debug.printf("Parsed json: \"%s\".\n", json.c_str());
+    debug.printf(
+        "Parsed day: \"%s\", night: \"%s\", json: \"%s\".\n", dayPower.c_str(), nightPower.c_str(), json.c_str()
+    );
 
     delay(100); // give time to see the previous light color
 
