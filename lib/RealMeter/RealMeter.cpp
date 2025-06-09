@@ -5,7 +5,6 @@
 #include <ESP32_RGB.h>
 #include <HardwareSerial.h>
 #include <P1.h>
-#include <regex>
 
 // connect meter interface to board: red Vcc to 5V, black gnd to gnd, purple pullup to 3.3V, green inverted tx with pullup to pin 15
 // find ports with ~\.platformio\penv\Scripts\platformio.exe device list
@@ -83,41 +82,29 @@ void RealMeter::init() {
     server->setValue(formatJson("000000.NaN*kWh", "000000.NaN*kWh"));
 }
 
-// 1-0:1.8.1(003020.519*kWh)
-const std::regex dayPowerR(R"(1-0:1.8.1\(0*(\d+\.\d+\*kWh)\))");
-// 1-0:1.8.2(003080.021*kWh)
-const std::regex nightPowerR(R"(1-0:1.8.2\(0*(\d+\.\d+\*kWh)\))");
-
-std::string regex_match(const std::string &data, const std::regex &pattern) {
-    std::smatch match;
-    bool matches = std::regex_search(data, match, pattern) && match.size() > 1;
-    return matches ? match[1].str() : "<no match>";
-}
-
 void RealMeter::loop() {
     debug.println("Waiting for telegram.");
     ESP_32::RGB.setColor(0, 255, 0);
 
-    auto result = P1::awaitTelegram(meter);
+    auto telegram = P1::awaitTelegram(meter);
 
-    if (result.status == P1::TelegramState::Empty) {
+    if (telegram.status == P1::TelegramState::Empty) {
         debug.println("Nothing received.");
         return;
     }
 
-    if (result.status == P1::TelegramState::Partial) {
-        debug.printf("Didn't read properly, trying again:\n%s\n", result.value.c_str());
+    if (telegram.status == P1::TelegramState::Partial) {
+        debug.printf("Didn't read properly, trying again:\n%s\n", telegram.text.c_str());
         return;
     }
 
-    std::string telegram = result.value;
-    debug.printf("Received telegram, %d chars: %s\n", telegram.length(), telegram.c_str());
+    debug.printf("Received telegram, %d chars: %s\n", telegram.text.length(), telegram.text.c_str());
 
     ESP_32::RGB.setColor(255, 0, 0);
 
-    std::string dayPower = regex_match(telegram, dayPowerR);
-    std::string nightPower = regex_match(telegram, nightPowerR);
-    std::string json = formatJson(dayPower, nightPower);
+    auto dayPower = P1::readDayConsumption(telegram);
+    auto nightPower = P1::readNightConsumption(telegram);
+    auto json = formatJson(dayPower, nightPower);
 
     debug.printf("Parsed day: \"%s\".\n", dayPower.c_str());
     debug.printf("Parsed night: \"%s\".\n", nightPower.c_str());

@@ -1,8 +1,16 @@
 #pragma once
 
 #include <HardwareSerial.h>
+#include <regex>
 
 namespace P1 {
+    enum class TelegramState { Empty, Partial, Success };
+
+    struct Telegram {
+        TelegramState status;
+        std::string text;
+    };
+
     namespace {
         // a telegram is sent every second or so
         const unsigned long timeout = 1500;
@@ -31,14 +39,23 @@ namespace P1 {
             received.shrink_to_fit();
             return received;
         }
+
+        std::string regex_match(const Telegram &telegram, const std::regex &pattern) {
+            if (telegram.status != TelegramState::Success) {
+                throw std::runtime_error("Do not try to parse incomplete telegrams.");
+            }
+
+            std::smatch match;
+            bool matches = std::regex_search(telegram.text, match, pattern) && match.size() > 1;
+
+            // since we're parsing our own telegram and not a random string, we can assume this won't happen
+            if (!matches) {
+                throw std::runtime_error("Could not parse value line from telegram.");
+            }
+
+            return match[1].str();
+        }
     }
-
-    enum class TelegramState { Empty, Partial, Success };
-
-    struct Telegram {
-        TelegramState status;
-        std::string value;
-    };
 
     void init(HardwareSerial &meter) {
         meter.begin(115200, SERIAL_8N1, -1, -1, true);
@@ -61,5 +78,19 @@ namespace P1 {
         auto hash = readStringUntilWithTimeoutIncludingTerminator(meter, '\n');
         telegram += hash;
         return {TelegramState::Success, telegram};
+    }
+
+    // 3020.519*kWh
+    std::string readDayConsumption(const Telegram &telegram) {
+        // 1-0:1.8.1(003020.519*kWh)
+        const std::regex regex(R"(1-0:1.8.1\(0*(\d+\.\d+\*kWh)\))");
+        return regex_match(telegram, regex);
+    }
+
+    // 3080.021*kWh
+    std::string readNightConsumption(const Telegram &telegram) {
+        // 1-0:1.8.2(003080.021*kWh)
+        const std::regex regex(R"(1-0:1.8.2\(0*(\d+\.\d+\*kWh)\))");
+        return regex_match(telegram, regex);
     }
 }
